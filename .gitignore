@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Env / secrets
+.env
+
+# Node
+node_modules/
+dist/
+frontend/.vite/
+
+# VAD assets vendored from node_modules by scripts/copy-vad-assets.mjs
+frontend/public/vad/
+
+# Media (large source files live outside version control)
+*.mp4
+*.ts
+
+# OS
+.DS_Store
+The spelled-out intro to neural networks and backpropagation： building micrograd [VMj-3S1tku0].mp4
