@@ -102,15 +102,66 @@ body {
 }
 .chip:hover { border-color: #4f9dde; }
 
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
 .back {
   background: none;
   border: none;
   color: #8a90a2;
   cursor: pointer;
   font-size: 0.9rem;
-  margin-bottom: 1.5rem;
 }
 .back:hover { color: #e7e9ee; }
+
+.mute {
+  background: #1c2130;
+  border: 1px solid #2a3043;
+  color: #e7e9ee;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.mute:hover { border-color: #4f9dde; }
+.mute.on {
+  background: #3a1c24;
+  border-color: #d2607a;
+  color: #f0c2cd;
+}
+
+/* Two-line clamp for lecture text so we don't dump a whole paragraph. */
+.bubble.clamp2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Lecture progress bar + time estimate. */
+.lecture-progress { margin: -0.5rem 0 1.5rem; }
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #1c2130;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: #57b894;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.progress-time {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #8a90a2;
+  font-variant-numeric: tabular-nums;
+}
 
 /* Mode indicator — the only clickable chrome besides back. */
 .mode-pill {

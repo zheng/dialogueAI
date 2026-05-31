@@ -41,12 +41,12 @@ GEMINI_MODEL = "gemini-3.5-flash"
 ELEVENLABS_MODEL = "eleven_multilingual_v2"
 EXPERTS_ROOT = Path(__file__).resolve().parent.parent / "experts"
 
-# Conversation answers are deliberately short; this hard-caps length so a reply
-# can't balloon into a paragraph mid-stream. Gemini 3.5 Flash spends "thinking"
-# tokens against this budget by default, which for a low cap leaves nothing for
-# the reply -- so we disable thinking entirely (also snappier) and keep a tight
-# answer cap (~2 short sentences).
-CONVERSATION_MAX_TOKENS = 90
+# Caps conversation answer length. Thinking is currently disabled (NO_THINKING;
+# see the "re-adding thinking" plan in PLAN2.md), so this budget is entirely for
+# the visible reply: ~160 tokens lets a teaching answer breathe (3-4 sentences)
+# while the prompt keeps chit-chat to one or two. NOTE: if thinking is re-enabled
+# this must grow to fit thinking + answer -- thinking spends against this cap.
+CONVERSATION_MAX_TOKENS = 160
 NO_THINKING = types.ThinkingConfig(thinking_budget=0)
 # Roughly how many characters of transcript to read per lecture segment.
 LECTURE_SEGMENT_CHARS = 420
@@ -60,17 +60,24 @@ as the first message). If the corpus doesn't cover something, say you didn't
 cover that rather than guessing. Never invent facts, numbers, or citations.
 NEVER recite or dump the transcript as text in conversation.
 
-STYLE: This is speech, not an essay. Answer in ONE sentence, or at most two very
-short ones (~25 words total). Give only the core of the answer, then STOP. No
-preamble, no lists, no recap, no "in summary". It's fine to be incomplete --
-they'll ask a follow-up if they want more.
+STYLE: This is speech, not an essay -- be conversational and stop once you've
+answered. For a quick factual question, one or two sentences. For a "how do I
+build X" / "how does X work" question, give the first concrete step and the
+intuition -- a few sentences (3-4), then stop. No preamble, no lists, no recap,
+no "in summary". You are being SPOKEN aloud: never write code blocks, LaTeX, or
+symbols -- describe code and math in plain spoken words (say "x squared", not
+"x^2"; describe what a function does rather than dictating it).
 
-LECTURE TOOLS: When the user wants to be *taught* or *walked through* a topic as
-a lecture (rather than a quick answer), call `start_lecture` with the matching
-lecture_id and a short verbatim `anchor_quote` copied exactly from the corpus at
-the point to begin. Use `jump` to move within/across lectures the same way,
-`resume_lecture` to continue a paused lecture, and `end_lecture` to stop.
-Available lectures (use these exact ids):
+LECTURE TOOLS: By DEFAULT you answer in conversation -- in your own words. Only
+call `start_lecture` when the user EXPLICITLY asks to play/watch the actual
+lecture or be walked through the whole thing end to end (e.g. "play the micrograd
+lecture", "walk me through the full thing", "just show me the video"). A plain
+"yes", "teach me", "go on", or "how do I build X" is NOT a lecture request --
+keep talking in conversation and explain it yourself. When you do start one, pass
+the matching lecture_id and a short verbatim `anchor_quote` copied exactly from
+the corpus at the point to begin. Use `jump` to move within/across lectures the
+same way, `resume_lecture` to continue a paused lecture, and `end_lecture` to
+stop. Available lectures (use these exact ids):
 {lecture_list}
 """
 
@@ -93,8 +100,10 @@ LECTURE_TOOLS = [
                 name="start_lecture",
                 description=(
                     "Switch to lecture mode and play a lecture verbatim from a "
-                    "chosen spot. Use when the user wants a full walkthrough of "
-                    "a topic rather than a quick answer."
+                    "chosen spot. ONLY use when the user EXPLICITLY asks to play "
+                    "the actual lecture or be walked through the whole thing end "
+                    "to end. Do NOT use for a plain 'yes'/'teach me'/'how do I "
+                    "build X' -- answer those yourself in conversation instead."
                 ),
                 parameters=types.Schema(
                     type="OBJECT",
@@ -303,8 +312,22 @@ async def run_lecture(ws: WebSocket, session: Session) -> None:
     """
     session.mode = "lecture"
     lec = session.lectures[session.lecture_id]
+    total = len(lec.text)
+
+    async def send_progress() -> None:
+        await send_json(
+            ws,
+            {
+                "type": "cursor",
+                "lecture": session.lecture_id,
+                "pos": session.cursor,
+                "total": total,
+            },
+        )
+
     await send_mode(ws, session, paused=False)
     await send_json(ws, {"type": "turn_start", "mode": "lecture"})
+    await send_progress()  # so the bar appears immediately at the right spot
     while True:
         segment, new_cursor = next_segment(lec.text, session.cursor)
         if segment is None:
@@ -317,9 +340,7 @@ async def run_lecture(ws: WebSocket, session: Session) -> None:
             return
         await speak(ws, session, segment)
         session.cursor = new_cursor
-        await send_json(
-            ws, {"type": "cursor", "lecture": session.lecture_id, "pos": session.cursor}
-        )
+        await send_progress()
 
 
 def resolve_lecture_id(session: Session, raw: str | None) -> str | None:
