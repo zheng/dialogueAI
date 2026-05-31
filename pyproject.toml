@@ -1,0 +1,15 @@
+[project]
+name = "dialogueai"
+version = "0.1.0"
+description = "Voice chat with AI experts"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "google-genai>=0.8",
+    "elevenlabs>=1.50",
+    "python-dotenv>=1.0",
+]
+
+[tool.uv]
+package = false

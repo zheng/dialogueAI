@@ -3,7 +3,13 @@
     "allow": [
       "WebSearch",
       "Bash(npm --version)",
-      "Bash(uv --version)"
+      "Bash(uv --version)",
+      "Bash(python3 -m py_compile backend/*.py)",
+      "Bash(python -c \"import whisper; print\\('whisper ok', whisper.__file__\\)\")",
+      "Bash(uv run *)",
+      "Bash(uv pip *)",
+      "Bash(brew --version)",
+      "Bash(brew install *)"
     ]
   }
 }

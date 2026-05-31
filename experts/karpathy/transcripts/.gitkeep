@@ -1,0 +1,2 @@
+# Drop one or more hand-supplied .txt transcript files in this directory.
+# They are concatenated on load and used as the expert's content corpus.

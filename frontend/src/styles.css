@@ -1,0 +1,113 @@
+:root {
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #0b0d12;
+  color: #e7e9ee;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screen {
+  width: min(560px, 92vw);
+  text-align: center;
+  padding: 2rem;
+}
+
+.prompt {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.sub {
+  color: #8a90a2;
+  margin-bottom: 2.5rem;
+}
+
+/* Pulsing orb whose state is driven by a data-state attribute */
+.orb {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  margin: 0 auto 2rem;
+  background: #3b4252;
+  transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
+}
+.orb[data-state='listening'] {
+  background: #4f9dde;
+  box-shadow: 0 0 0 0 rgba(79, 157, 222, 0.6);
+  animation: pulse 1.6s infinite;
+}
+.orb[data-state='processing'] {
+  background: #c9a227;
+  animation: spin 1s linear infinite;
+}
+.orb[data-state='speaking'] {
+  background: #57b894;
+  transform: scale(1.08);
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(79, 157, 222, 0.5); }
+  70% { box-shadow: 0 0 0 24px rgba(79, 157, 222, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 157, 222, 0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.status { color: #8a90a2; min-height: 1.4rem; }
+
+.exchange {
+  margin-top: 2rem;
+  text-align: left;
+  display: grid;
+  gap: 0.75rem;
+}
+.bubble {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  line-height: 1.4;
+}
+.bubble.user { background: #1c2130; }
+.bubble.expert { background: #14241d; }
+.bubble .who { font-size: 0.75rem; color: #8a90a2; margin-bottom: 0.25rem; }
+
+.hint {
+  margin-top: 2rem;
+  color: #8a90a2;
+  font-size: 0.9rem;
+}
+.chip {
+  display: inline-block;
+  margin: 0.35rem 0.25rem 0;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: #1c2130;
+  border: 1px solid #2a3043;
+  color: #e7e9ee;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.chip:hover { border-color: #4f9dde; }
+
+.back {
+  background: none;
+  border: none;
+  color: #8a90a2;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+.back:hover { color: #e7e9ee; }
