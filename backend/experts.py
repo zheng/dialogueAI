@@ -15,9 +15,19 @@ changes the implementation below; nothing else in the app depends on files.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+
+
+@dataclass(frozen=True)
+class Lecture:
+    """One long-form piece of content: a unit lecture mode can play verbatim."""
+
+    id: str  # filename stem, e.g. "1_micrograd"
+    title: str  # human label, e.g. "micrograd"
+    text: str
 
 
 @dataclass(frozen=True)
@@ -29,7 +39,21 @@ class Expert:
     tagline: str
     persona: str
     elevenlabs_voice_id: str
-    transcript: str
+    lectures: tuple[Lecture, ...]
+
+    @property
+    def corpus(self) -> str:
+        """All lectures concatenated, with id headers, as the grounding context.
+
+        Headers let the model map a topic to a `lecture_id` for the lecture
+        tools. This string is stable across turns so Gemini's implicit cache
+        hits on it.
+        """
+        blocks = [
+            f"=== LECTURE [{lec.id}] {lec.title} ===\n{lec.text}"
+            for lec in self.lectures
+        ]
+        return "\n\n".join(blocks)
 
 
 @dataclass(frozen=True)
@@ -54,15 +78,20 @@ class ExpertSearch(Protocol):
         ...
 
 
+def _title_from_stem(stem: str) -> str:
+    """`2_makemore_1_language_modeling` -> `makemore 1 language modeling`."""
+    no_prefix = re.sub(r"^\d+[_-]", "", stem)
+    return no_prefix.replace("_", " ").strip()
+
+
 class LocalExpertSearch:
     """An `ExpertSearch` backed by the local `experts/` directory.
 
     Each expert is a folder with a `config.json` and a `transcripts/` directory
-    of hand-supplied `.txt` files (concatenated to form the corpus). The index
-    is read once at construction; `search` is intentionally a stub here -- with
-    a single expert there's nothing to rank, and the *relevance* judgment for
-    the MVP lives in the lobby (Gemini decides whether a query matches). As the
-    index grows this is where real ranked retrieval would go.
+    of hand-supplied `.txt` files. Each `.txt` is one `Lecture` (ordered by
+    filename); together they form the grounding `corpus`. The index is read once
+    at construction; `search` is a stub here -- with a single expert there's
+    nothing to rank, and the relevance judgment for the MVP lives in the lobby.
     """
 
     def __init__(self, root: Path):
@@ -101,12 +130,19 @@ class LocalExpertSearch:
             tagline=config["tagline"],
             persona=config["persona"],
             elevenlabs_voice_id=config.get("elevenlabs_voice_id", ""),
-            transcript=self._load_transcript(id),
+            lectures=self._load_lectures(id),
         )
 
-    def _load_transcript(self, id: str) -> str:
+    def _load_lectures(self, id: str) -> tuple[Lecture, ...]:
         transcripts_dir = self._root / id / "transcripts"
         if not transcripts_dir.is_dir():
-            return ""
-        parts = [p.read_text() for p in sorted(transcripts_dir.glob("*.txt"))]
-        return "\n\n".join(part.strip() for part in parts if part.strip())
+            return ()
+        lectures = []
+        for path in sorted(transcripts_dir.glob("*.txt")):
+            text = path.read_text().strip()
+            if not text:
+                continue
+            lectures.append(
+                Lecture(id=path.stem, title=_title_from_stem(path.stem), text=text)
+            )
+        return tuple(lectures)

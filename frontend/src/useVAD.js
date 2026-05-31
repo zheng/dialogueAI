@@ -30,18 +30,20 @@ function encodeWAV(samples, sampleRate = 16000) {
   return new Blob([view], { type: 'audio/wav' })
 }
 
-// Voice Activity Detection via Silero (ONNX, in browser). Calls `onUtterance`
-// with a WAV blob each time the user finishes speaking. `enabled` lets the
-// caller mute the mic while the expert is talking, to avoid self-triggering.
+// Voice Activity Detection via Silero (ONNX, in browser). Calls `onSpeechStart`
+// the moment the user begins talking (used for barge-in) and `onUtterance` with
+// a WAV blob when they finish. `enabled` lets the caller mute the mic.
 //
 // Assets (worklet, ONNX model, ort wasm) are served locally from /vad/ -- see
 // scripts/copy-vad-assets.mjs -- rather than from vad-web's default CDN.
-export function useVAD({ onUtterance, enabled = true }) {
+export function useVAD({ onUtterance, onSpeechStart, enabled = true }) {
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
   const vadRef = useRef(null)
   const onUtteranceRef = useRef(onUtterance)
+  const onSpeechStartRef = useRef(onSpeechStart)
   onUtteranceRef.current = onUtterance
+  onSpeechStartRef.current = onSpeechStart
 
   // Construct the VAD once. This requests mic access and loads the model.
   useEffect(() => {
@@ -49,6 +51,7 @@ export function useVAD({ onUtterance, enabled = true }) {
     MicVAD.new({
       baseAssetPath: '/vad/',
       onnxWASMBasePath: '/vad/',
+      onSpeechStart: () => onSpeechStartRef.current?.(),
       onSpeechEnd: (audio) => onUtteranceRef.current(encodeWAV(audio)),
     })
       .then((vad) => {

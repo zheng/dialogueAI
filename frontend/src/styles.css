@@ -111,3 +111,35 @@ body {
   margin-bottom: 1.5rem;
 }
 .back:hover { color: #e7e9ee; }
+
+/* Mode indicator — the only clickable chrome besides back. */
+.mode-pill {
+  display: block;
+  margin: 0 auto 1.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  border: 1px solid #2a3043;
+  background: #1c2130;
+  color: #8a90a2;
+  font-size: 0.85rem;
+  cursor: default;
+}
+.mode-pill.lecture {
+  border-color: #57b894;
+  color: #cdeede;
+  cursor: pointer;
+}
+.mode-pill.paused {
+  border-color: #c9a227;
+  color: #f0e0a8;
+  cursor: pointer;
+}
+.orb[data-state='idle'] { background: #3b4252; }
+
+/* Tiny diagnostics readout, bottom of the chat screen. */
+.diag {
+  margin-top: 2.5rem;
+  font-size: 0.75rem;
+  color: #5a6072;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

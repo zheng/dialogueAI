@@ -37,6 +37,13 @@ export function useWebSocket(path, { onJson, onBinary } = {}) {
     }
   }, [path])
 
+  // Send a control message (interrupt / resume / end_lecture / …).
+  const send = (obj) => {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    ws.send(JSON.stringify(obj))
+  }
+
   // Send a voice utterance: control frame + the WAV blob.
   const sendVoice = async (wavBlob) => {
     const ws = wsRef.current
@@ -45,5 +52,5 @@ export function useWebSocket(path, { onJson, onBinary } = {}) {
     ws.send(await wavBlob.arrayBuffer())
   }
 
-  return { connected, sendVoice }
+  return { connected, send, sendVoice }
 }
