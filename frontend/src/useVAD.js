@@ -51,6 +51,14 @@ export function useVAD({ onUtterance, onSpeechStart, enabled = true }) {
     MicVAD.new({
       baseAssetPath: '/vad/',
       onnxWASMBasePath: '/vad/',
+      // Less twitchy than defaults: the mic is always on (for barge-in), so the
+      // expert's OWN audio leaks back in. Require more confident, sustained
+      // speech before firing, so echo-cancellation residual doesn't self-trigger
+      // and flush the lecture that's playing.
+      positiveSpeechThreshold: 0.82,
+      negativeSpeechThreshold: 0.6,
+      minSpeechFrames: 8,
+      redemptionFrames: 16,
       onSpeechStart: () => onSpeechStartRef.current?.(),
       onSpeechEnd: (audio) => onUtteranceRef.current(encodeWAV(audio)),
     })

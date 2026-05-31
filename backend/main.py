@@ -41,13 +41,20 @@ GEMINI_MODEL = "gemini-3.5-flash"
 ELEVENLABS_MODEL = "eleven_multilingual_v2"
 EXPERTS_ROOT = Path(__file__).resolve().parent.parent / "experts"
 
-# Caps conversation answer length. Thinking is currently disabled (NO_THINKING;
-# see the "re-adding thinking" plan in PLAN2.md), so this budget is entirely for
-# the visible reply: ~160 tokens lets a teaching answer breathe (3-4 sentences)
-# while the prompt keeps chit-chat to one or two. NOTE: if thinking is re-enabled
-# this must grow to fit thinking + answer -- thinking spends against this cap.
-CONVERSATION_MAX_TOKENS = 160
+# Thinking is ON for reasoning quality, but the spoken answer must stay crisp --
+# brevity is enforced by the PROMPT, not this cap. Thinking tokens spend against
+# max_output_tokens, and the budget is only a loose hint the model overshoots
+# (a budget of 128 was measured spending ~516), so the cap must sit well above
+# any overshoot or the reply gets starved/truncated. A high cap is free (you pay
+# per token actually produced) and the prompt keeps the answer short regardless.
+# A small budget (64) keeps thinking tight -> snappier and less overshoot, while
+# still adding real reasoning. Kill switch: CONVERSATION_THINKING = NO_THINKING.
+CONVERSATION_THINKING_BUDGET = 64
+CONVERSATION_MAX_TOKENS = 1024
 NO_THINKING = types.ThinkingConfig(thinking_budget=0)
+CONVERSATION_THINKING = types.ThinkingConfig(
+    thinking_budget=CONVERSATION_THINKING_BUDGET
+)
 # Roughly how many characters of transcript to read per lecture segment.
 LECTURE_SEGMENT_CHARS = 420
 
@@ -60,13 +67,24 @@ as the first message). If the corpus doesn't cover something, say you didn't
 cover that rather than guessing. Never invent facts, numbers, or citations.
 NEVER recite or dump the transcript as text in conversation.
 
-STYLE: This is speech, not an essay -- be conversational and stop once you've
-answered. For a quick factual question, one or two sentences. For a "how do I
-build X" / "how does X work" question, give the first concrete step and the
-intuition -- a few sentences (3-4), then stop. No preamble, no lists, no recap,
-no "in summary". You are being SPOKEN aloud: never write code blocks, LaTeX, or
-symbols -- describe code and math in plain spoken words (say "x squared", not
-"x^2"; describe what a function does rather than dictating it).
+STYLE: A live back-and-forth, NOT a lecture. HARD STRUCTURE for EVERY reply:
+at most 3 sentences total, ~45 words MAX, and the LAST sentence MUST be a short
+question offering to go deeper -- never write a 4th sentence. Give ONE headline
+idea or intuition, then the question. NEVER explain the full mechanism or list
+the steps in one go (no matter how big the question) -- reveal one layer per turn
+and let them pull more out of you. Match the length and shape of these examples
+exactly:
+- "best way to learn LLMs from scratch, no experience?" -> "My approach is to
+  start with no libraries and build it up step by step, so you see exactly how
+  the math works. Want to start with that first micrograd step?"
+- "how does backpropagation work?" -> "At its core it's just the chain rule
+  applied backwards through the computation graph, so every value learns how it
+  nudges the final loss. Want to walk through it on one tiny example?"
+- "what is a derivative?" -> "It's the sensitivity of a function's output to a
+  tiny nudge in its input -- the slope at that point. Want to see how we compute
+  it numerically?"
+SPOKEN ALOUD: never output code, backticks, LaTeX, or symbols -- say "h goes to
+zero", not "$h$"; describe code in plain words.
 
 LECTURE TOOLS: By DEFAULT you answer in conversation -- in your own words. Only
 call `start_lecture` when the user EXPLICITLY asks to play/watch the actual
@@ -411,7 +429,7 @@ async def run_conversation_turn(ws: WebSocket, session: Session, wav: bytes) -> 
             system_instruction=session.system_instruction,
             tools=LECTURE_TOOLS,
             max_output_tokens=CONVERSATION_MAX_TOKENS,
-            thinking_config=NO_THINKING,
+            thinking_config=CONVERSATION_THINKING,
         ),
     )
     async for chunk in stream:

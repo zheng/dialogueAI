@@ -72,8 +72,14 @@ export default function ChatView({ expertId, onBack }) {
     },
   })
 
-  // Barge-in: the instant the user speaks, stop playback and cancel the server turn.
+  const lastSpokeAt = useRef(0)
+
+  // Barge-in: the instant the user speaks, stop playback and cancel the server
+  // turn. But ignore a trigger that fires right after our OWN utterance -- that's
+  // the tail of the user's speech (or echo), not a real interruption, and it
+  // would cancel the very turn/lecture we just started.
   const handleSpeechStart = useCallback(() => {
+    if (Date.now() - lastSpokeAt.current < 1000) return
     flush()
     turnEnded.current = true
     send({ type: 'interrupt' })
@@ -82,6 +88,7 @@ export default function ChatView({ expertId, onBack }) {
 
   const handleUtterance = useCallback(
     (wav) => {
+      lastSpokeAt.current = Date.now()
       setDiag((d) => ({ ...d, heard: d.heard + 1 }))
       setStatus('processing')
       sendVoice(wav)
